@@ -7,25 +7,61 @@ class App(Tk):
     def __init__(self):
         super().__init__()
         self.title("Sudoku")
-        self.geometry("600x450")
+        self.geometry("560x420")
+        self.resizable(False, False)
+        self.configure(background="#2e5921")
         self.framesize=self.winfo_screenheight()*0.5
         #frame with sudoku board
-        self.frame=Frame(self, bg="orange")
-        self.frame.place(x=5, y=5, height=400, width=400)
+        self.frame=Frame(self)
+        self.frame.place(x=10, y=10, height=400, width=400)
         #first board
-        board=self.generate_board(45)
-        my_entries=[]
-        reg_callback=self.register(self.callback)
+        self.board=self.generate_board(45)
+        #list of entries with empty cells
+        self.my_entries=[]
+        #registering checking function
+        self.reg_callback=self.register(self.callback)
+        self.frames=[[i for i in range(3)] for j in range(3)]
+        #creating 3x3 boards
+        for i in range(3):
+            for j in range(3):
+                self.frames[i][j]=Frame(self.frame, borderwidth=3, background="#2e5921")
+                self.frames[i][j].place(relwidth=1/3, relheight=1/3, relx=i/3, rely=j/3)
+        #filling board in GUI
         for i in range(9):
             for j in range(9):
-                if board[i][j]==0:
-                    self.entry=Entry(self.frame, borderwidth=1, relief="solid", font="Helvetica 15 bold",
-                     justify="center", validate="key", validatecommand=(reg_callback, "%P"), insertontime=0)
-                    self.entry.place(relheight=1/9, relwidth=1/9, relx=i/9, rely=j/9)
-                    my_entries.append(self.entry)
+                if self.board[i][j]==0:
+                    self.entry=Entry(self.frames[i//3][j//3], borderwidth=1, relief="ridge", font="Helvetica 15 bold", state="normal",
+                     justify="center", validate="key", validatecommand=(self.reg_callback, "%P"), insertontime=0)
+                    self.entry.place(relheight=1/3, relwidth=1/3, relx=i%3/3, rely=j%3/3)
+                    self.entry.bind("<ButtonRelease-1>",lambda event, pos=i*9+j: self.select_cell(pos))
+                    for k in range(1,10):
+                        self.entry.bind(str(k), lambda event, pos=i*9+j, l=k: self.change_number(pos,l))
+                    self.my_entries.append(self.entry)
                 else:
-                    self.label=Label(self.frame,text=int(board[i][j]), borderwidth=1, relief="solid")
-                    self.label.place(relheight=1/9, relwidth=1/9, relx=i/9, rely=j/9)
+                    self.label=Label(self.frames[i//3][j//3],text=int(self.board[i][j]), borderwidth=1, relief="ridge",
+                    bg="#525252", fg="white")
+                    self.label.place(relheight=1/3, relwidth=1/3, relx=i%3/3, rely=j%3/3)
+                    self.my_entries.append(self.label)
+        self.button_frames=Frame(self, background="#2e5921")
+        self.button_frames.place(x=420, y=10, height=400, width=130)
+        self.button_frames.bind("<ButtonRelease-1>",lambda event, pos=82: self.select_cell(pos))
+        #button to check solution
+        self.check_button = Button(self.button_frames, text="Sprawdź", command=lambda: self.check(self.board, self.my_entries), bg="#b0ebba")
+        self.check_button.pack(side="top", fill="x", pady=5)
+        #button to view solution
+        self.view_solution_button = Button(self.button_frames, text="Pokaż rozwiązanie", command=lambda: self.view_solution(self.board, self.my_entries),
+                                    bg="#b0ebba")
+        self.view_solution_button.pack(side="top", fill="x", pady=5)
+        #label "new game"
+        self.new_game_label=Label(self.button_frames, text="\nNowa gra:", bg="#2e5921", fg="#b0ebba")
+        self.new_game_label.pack(side="top", fill="x", pady=5)
+        #new game buttons
+        self.easy_button=Button(self.button_frames, text="Łatwa", command=lambda: self.new_game(self.board, "e"), bg="#b0ebba")
+        self.easy_button.pack(side="top", fill="x", pady=5)
+        self.easy_button=Button(self.button_frames, text="Normalna", command=lambda: self.new_game(self.board, "n"), bg="#b0ebba")
+        self.easy_button.pack(side="top", fill="x", pady=5)
+        self.easy_button=Button(self.button_frames, text="Trudna", command=lambda: self.new_game(self.board, "t"), bg="#b0ebba")
+        self.easy_button.pack(side="top", fill="x", pady=5)
 
     def generate_board(self, k):
         board = np.zeros([9, 9])
@@ -38,15 +74,73 @@ class App(Tk):
         delete_nums(board,k)
         return board
 
-
+    #function which checks whether only numbers are in cell inputs
     def callback(self, input):
         if (input.isdigit() and len(input)==1) or input=='':
             return True
         else:
             return False
-
         
+    def check(self, board, my_entries):
+        solve(board, 0,0)
+        nums = [i.cget("text") if type(i)==Label else i.get() for i in my_entries]
+        nums = [float(i) if not i=='' else 0 for i in nums]
+        nums=np.array(nums).reshape([9,9])
+        for i in range(9):
+            for j in range(9):
+                if board[i][j]!=nums[i][j]:
+                    self.my_entries[i*9+j].config(bg="#fa908c")
+                elif type(self.my_entries[i*9+j])==Entry:
+                        self.my_entries[i*9+j].config(bg="#9fe889")
 
+    def view_solution(self, board, my_entries):
+        solve(board,0,0)
+        for i in range(9):
+            for j in range(9):
+                if type(my_entries[i*9+j])==Entry:
+                    my_entries[i*9+j].delete(0,1)
+                    my_entries[i*9+j].insert(0,int(board[i,j]))
+                    my_entries[i*9+j].config(state="disabled", disabledbackground="#9fe889")
+
+    def new_game(self, board, level):
+        if level=="e":
+            k=np.random.randint(40,45)
+        elif level=="n":
+            k=np.random.randint(45,50)
+        else:
+            k=np.random.randint(50, 55)
+        self.board=self.generate_board(k)
+        for cell in self.my_entries:
+            cell.place_forget()
+        self.my_entries=[]
+        for i in range(9):
+            for j in range(9):
+                if self.board[i][j]==0:
+                    self.entry=Entry(self.frames[i//3][j//3], borderwidth=1, relief="ridge", font="Helvetica 15 bold", state="normal",
+                     justify="center", validate="key", validatecommand=(self.reg_callback, "%P"), insertontime=0)
+                    self.entry.place(relheight=1/3, relwidth=1/3, relx=i%3/3, rely=j%3/3)
+                    self.entry.bind("<ButtonRelease-1>",lambda event, pos=i*9+j: self.select_cell(pos))
+                    for k in range(1,10):
+                        self.entry.bind(str(k), lambda event, pos=i*9+j, l=k: self.change_number(pos,l))
+                    self.my_entries.append(self.entry)
+                else:
+                    self.label=Label(self.frames[i//3][j//3],text=int(self.board[i][j]), borderwidth=1, relief="ridge",
+                    bg="#525252", fg="white")
+                    self.label.place(relheight=1/3, relwidth=1/3, relx=i%3/3, rely=j%3/3)
+                    self.my_entries.append(self.label)
+
+    def select_cell(self, pos):
+        for i in range(9):
+            for j in range(9):
+                if pos==i*9+j:
+                    self.my_entries[pos].config(bg="#c9c9c9")
+                elif type(self.my_entries[i*9+j])==Entry:
+                    self.my_entries[i*9+j].config(bg="white")
+    
+    def change_number(self, pos,k):
+        self.my_entries[pos].delete(0)
+        self.my_entries[pos].insert(0,k)
+                
 #checking if number can be assigned to the field
 def is_safe(board, i, j, num):
     if num not in board[i, :] and num not in board[:, j] and num not in board[i - i % 3:i - i % 3 + 3,
@@ -103,70 +197,6 @@ def delete_nums(board,k):
             board[coord]=0
         i=i+1
 
-#can be deleted
-def isOnlyOneSolution(board_original, board2, i,j):
-    board=np.matrix.copy(board_original)
-    if i==8 and j==9:
-        return True
-    if j==9:
-        i+=1
-        j=0
-    if board[i][j]>0:
-        return isOnlyOneSolution(board, board2,i, j+1)
-    for num in range(1,11):
-        if board2[i,j]==num:
-            continue
-        if is_safe(board, i, j, num) and num!=10:
-            board[i][j]=num
-            board2=np.matrix.copy(board)
-            isOnlyOneSolution(board, board2, i,j+1)
-        if num==10:
-            if is_safe(board, i, j, board2[i,j]):
-                board[i][j]=board2[i,j]
-                if isOnlyOneSolution(board, board2,i, j+1):
-                    return True
-            board[i][j]=0
-    return False
-        
-
 if __name__ == '__main__':
     app = App()
     app.mainloop()
-
-    board = np.zeros([9, 9])
-    # fill diagonal matrices
-    for i in [3, 6, 9]:
-        tab = np.arange(1, 10)
-        np.random.shuffle(tab)
-        board[i - 3:i, i - 3:i] = tab.reshape(3, 3)
-    solve(board,0,0)
-    delete_nums(board, 5)
-    print(board)
-    print(sum(sum(board==0)))
-    # board2=np.matrix.copy(board)
-    # print(board)
-    # deleteNums(board, 40)
-
-    # print(isOnlyOneSolution(board, board2, 0,0))
-    # #print(board)
-    # solve(board, 0, 0)
-    # #print(board)
-    # print(sum(sum(board==0)))
-    # print(sum(sum(board==board2))==81)
-    # board=np.array([[0,7,0,0,0,0,0,9,0],
-    #                 [0,0,5,3,0,4,0,0,0],
-    #                 [0,0,9,0,1,0,6,0,0],
-    #                 [0,0,0,6,0,5,0,0,0],
-    #                 [0,2,0,0,4,0,0,8,7],
-    #                 [0,0,4,1,0,0,0,0,0],
-    #                 [4,0,0,0,7,0,0,6,2],
-    #                 [0,5,2,0,0,0,8,0,0],
-    #                 [8,0,0,0,0,2,0,0,3]])
-    # print(board)
-    # board2=np.matrix.copy(board)
-    # solve(board, 0,0)
-    # print(board)
-    # deleteNums(board, 52)
-    # print(board)
-    # print(solve(board, 0,0, do_solve=False))
-    # print(sum(sum(board==0)))
