@@ -94,7 +94,8 @@ class App(Tk):
                         self.my_entries[i*9+j].config(bg="#9fe889")
 
     def view_solution(self, board, my_entries):
-        solve(board,0,0)
+        print(new_solver(board))
+        print(board)
         for i in range(9):
             for j in range(9):
                 if type(my_entries[i*9+j])==Entry:
@@ -108,7 +109,7 @@ class App(Tk):
         elif level=="n":
             k=np.random.randint(45,50)
         else:
-            k=np.random.randint(50, 55)
+            k=np.random.randint(55, 60)
         self.board=self.generate_board(k)
         for cell in self.my_entries:
             cell.place_forget()
@@ -189,7 +190,7 @@ def delete_nums(board,k):
                 continue
             if is_safe(board, coord[0], coord[1], j):
                 board[coord]=j
-                if solve(board,0,0, do_solve=False):
+                if new_solver(board,do_solve=False):
                     i=i-1
                     board[coord]=original_num
                     break
@@ -197,15 +198,105 @@ def delete_nums(board,k):
             board[coord]=0
         i=i+1
 
+def find_only_solution(board, row, col):
+    is_safe_num=[]
+    #print("JEDNAK TU")
+    num=0
+    for i in range(1,10):
+        is_safe_num.append(is_safe(board, row, col, i))
+        if is_safe_num[-1]==True:
+            num=i
+    if sum(is_safe_num)==1:
+        board[row,col]=num
+
+def find_nines_with_one_solution(board):
+    for i in range(9):
+        #rows
+        if sum(board[i,]==0)==1:
+            h=[j for j in range(10)]
+            index=0
+            for j in range(9):
+                #print(i,j,"RZAD",board[i,j])
+                h.remove(board[i,j])
+                if board[i,j]==0:
+                    index=j
+            board[i, index]=h[0] if h[0]!=0 else h[1]
+        #columns
+        if sum(board[:,i]==0)==1:
+            h=[j for j in range(10)]
+            index=0
+            for j in range(9):
+                #print(j,i, "KOLUMNA", board[j,i])
+                h.remove(board[j,i])
+                if board[j,i]==0:
+                    index=j
+            board[index, i]=h[0] if h[0]!=0 else h[1]
+    #squares
+    for i in range(3):
+        for j in range(3):
+            if sum(sum(board[i*3:i*3+3,j*3:j*3+3]==0))==1:
+                h=[k for k in range(10)]
+                index1=0
+                index2=0
+                for k in range(3):
+                    for l in range(3):
+                        #print(board, i*3+k, j*3+l, board[i*3+k, j*3+l], h)
+                        h.remove(board[i*3+k, j*3+l])
+                        if board[i*3+k, j*3+l]==0:
+                            index1=i*3+k
+                            index2=j*3+l
+                board[index1, index2]=h[0] if h[0]!=0 else h[1]
+
+def new_solver(board, do_solve=True):
+    if do_solve==False:
+        board=np.matrix.copy(board)
+    try:
+        while 0 in board:
+            board2=np.matrix.copy(board)
+            for i in range(9):
+                for j in range(9):
+                    if board[i][j]==0:
+                        find_only_solution(board, i, j)
+            find_nines_with_one_solution(board)
+            for i in range(9):
+                for j in range(9):
+                    num=board[i,j]
+                    board[i,j]=0
+                    if not is_safe(board, i, j, board[i,j]) and board[i,j]!=0:
+                        board[i,j]=num
+                        return False
+                    board[i,j]=num
+            if sum(sum(board2==board))==81:
+                if do_solve==True:
+                    solve(board,0,0)
+                return False
+        return True
+    except ValueError:
+        return False
+
+    
+
 if __name__ == '__main__':
     app = App()
     app.mainloop()
-    board = np.zeros([9, 9])
-        # fill diagonal matrices
-    for i in [3, 6, 9]:
-        tab = np.arange(1, 10)
-        np.random.shuffle(tab)
-        board[i - 3:i, i - 3:i] = tab.reshape(3, 3)
-    solve(board,0,0)
-    #delete_nums(board, 60)
-    print(board)
+    # board = np.zeros([9, 9])
+    #     # fill diagonal matrices
+    # for i in [3, 6, 9]:
+    #     tab = np.arange(1, 10)
+    #     np.random.shuffle(tab)
+    #     board[i - 3:i, i - 3:i] = tab.reshape(3, 3)
+    # solve(board,0,0)
+    # delete_nums(board, 60)
+    # print(sum(sum(board==0)))
+    # print(board)
+    # board=np.array([[0, 0, 4, 1, 0, 3, 0, 0, 0],
+    #                 [0, 0, 0, 2, 6, 0, 0, 1, 0],
+    #                 [1, 0, 0, 0, 8, 9, 2, 4, 0],
+    #                 [0, 6, 0, 0, 0, 0, 0, 0, 0],
+    #                 [8, 0, 0, 0, 0, 0, 4, 3, 0],
+    #                 [4, 0, 0, 8, 0, 0, 6, 0, 0],
+    #                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [6, 0, 0, 3, 0, 2, 0, 0, 0],
+    #                 [0, 0, 0, 0, 0, 0, 0, 0, 0]])
+    # new_solver(board)
+    # print(board)
