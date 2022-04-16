@@ -76,7 +76,7 @@ class App(Tk):
 
     #function which checks whether only numbers are in cell inputs
     def callback(self, input):
-        if (input.isdigit() and len(input)==1) or input=='':
+        if (input.isdigit() and len(input)==1 and input!="0") or input=='':
             return True
         else:
             return False
@@ -148,9 +148,9 @@ def is_safe(board, i, j, num):
         return True
     return False
 
-#sudoku solving function
-#returns False if cannot be solved
-#if do_solve==False it only checks whether sudoku can be solved
+# sudoku solving function
+# returns False if cannot be solved
+# if do_solve==False it only checks whether sudoku can be solved
 def solve(board, i, j, do_solve=True):
     if do_solve==False:
         board=np.matrix.copy(board)
@@ -172,7 +172,7 @@ def solve(board, i, j, do_solve=True):
 #deletes k number ensuring sudoku solution is unique
 #k must be greater than 3
 def delete_nums(board,k):
-    full_board=np.matrix.copy(board)
+    #full_board=np.matrix.copy(board)
     for i in range(3):
         coord=tuple(np.random.randint(0,9,2))
         while board[coord]==0:
@@ -189,7 +189,7 @@ def delete_nums(board,k):
                 continue
             if is_safe(board, coord[0], coord[1], j):
                 board[coord]=j
-                if solve(board, 0,0, do_solve=False):
+                if solve(board,0,0, do_solve=False):
                     i=i-1
                     board[coord]=original_num
                     break
@@ -200,3 +200,12 @@ def delete_nums(board,k):
 if __name__ == '__main__':
     app = App()
     app.mainloop()
+    board = np.zeros([9, 9])
+        # fill diagonal matrices
+    for i in [3, 6, 9]:
+        tab = np.arange(1, 10)
+        np.random.shuffle(tab)
+        board[i - 3:i, i - 3:i] = tab.reshape(3, 3)
+    solve(board,0,0)
+    #delete_nums(board, 60)
+    print(board)
