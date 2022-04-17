@@ -141,13 +141,11 @@ class App(Tk):
 
     # change color of cell when selected
     def select_cell(self, pos):
-        if pos==82:
-            return
         for i in range(9):
             for j in range(9):
-                self.my_entries[pos].icursor(END)
                 if pos==i*9+j:
                     self.my_entries[pos].config(bg="#c9c9c9")
+                    self.my_entries[pos].icursor(END)
                 elif type(self.my_entries[i*9+j])==Entry:
                     self.my_entries[i*9+j].config(bg="white")
     
